@@ -17,7 +17,9 @@ var streznik = http.createServer(function(zahteva, odgovor) {
    } else if (zahteva.url == '/datoteke') { 
        posredujSeznamDatotek(odgovor);
    } else if (zahteva.url.startsWith('/brisi')) { 
-       izbrisiDatoteko(odgovor, dataDir + zahteva.url.replace("/brisi", ""));
+      // izbrisiDatoteko(odgovor, dataDir + zahteva.url.replace("/brisi", ""));
+   }else if(zahteva.url.startsWith('/poglej')){
+       posredujStaticnoVsebino(odgovor, dataDir + zahteva.url.replace("/poglej", ""), "application/octet-stream");
    } else if (zahteva.url.startsWith('/prenesi')) { 
        posredujStaticnoVsebino(odgovor, dataDir + zahteva.url.replace("/prenesi", ""), "application/octet-stream");
    } else if (zahteva.url == "/nalozi") {
@@ -30,19 +32,33 @@ var streznik = http.createServer(function(zahteva, odgovor) {
 function posredujOsnovnoStran(odgovor) {
     posredujStaticnoVsebino(odgovor, './public/fribox.html', "");
 }
+function izbrisiDatoteko(odgovor,datoteka){
+    odgovor.writeHead(200,{'Content-Type': 'text/plain'});
+    fs.unlink(datoteka,function(napaka){
+        if(napaka){
+            posredujNapako404(odgovor);
+        }else{
+            odgovor.write('datoteka izbrisana');
+            odgovor.end();
+        }
+    })
+    
+}
 
 function posredujStaticnoVsebino(odgovor, absolutnaPotDoDatoteke, mimeType) {
         fs.exists(absolutnaPotDoDatoteke, function(datotekaObstaja) {
             if (datotekaObstaja) {
                 fs.readFile(absolutnaPotDoDatoteke, function(napaka, datotekaVsebina) {
                     if (napaka) {
-                        //Posreduj napako
+                        
+                    posredujNapako500(odgovor);
+                        
                     } else {
                         posredujDatoteko(odgovor, absolutnaPotDoDatoteke, datotekaVsebina, mimeType);
                     }
                 })
             } else {
-                //Posreduj napako
+                posredujNapako404(odgovor);
             }
         })
 }
@@ -61,7 +77,7 @@ function posredujSeznamDatotek(odgovor) {
     odgovor.writeHead(200, {'Content-Type': 'application/json'});
     fs.readdir(dataDir, function(napaka, datoteke) {
         if (napaka) {
-            //Posreduj napako
+            posredujNapako500(odgovor);
         } else {
             var rezultat = [];
             for (var i=0; i<datoteke.length; i++) {
@@ -94,4 +110,17 @@ function naloziDatoteko(zahteva, odgovor) {
             }
         });
     });
+}
+
+streznik.listen(process.env.PORT, function(){
+    console.log("streznik zagnan");
+});
+
+function posredujNapako404(odgovor){
+    odgovor.writeHead(404)
+    
+}
+function posredujNapako500(odgovor){
+    odgovor.writeHead(500)
+    
 }
